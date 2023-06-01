@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+
+#define ARRAY_SIZE 1000
+#define CHUNK_SIZE 200
+#define NUM_THREADS 5
+
+int array[ARRAY_SIZE];
+int number_to_find = 42;  // Número a ser procurado no array
+int process_number = 0;  // Número do processo onde o número foi encontrado
+
+void *procurar_numero(void *arg) {
+    int thread_number = *(int *)arg;
+    int start_index = thread_number * CHUNK_SIZE;
+    int end_index = start_index + CHUNK_SIZE;
+    
+    for (int i = start_index; i < end_index; i++) {
+        if (array[i] == number_to_find) {
+            printf("O número %d foi encontrado na posição %d pela thread %d.\n", number_to_find, i, thread_number + 1);
+            process_number = thread_number + 1;
+            pthread_exit(&process_number);
+        }
+    }
+    
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t threads[NUM_THREADS];
+    int thread_args[NUM_THREADS];
+    void *thread_result;
+
+    // Preencher o array com números de 0 a ARRAY_SIZE - 1
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        array[i] = i;
+    }
+
+    // Criar as threads
+    for (int i = 0; i < NUM_THREADS; i++) {
+        thread_args[i] = i;
+        int result = pthread_create(&threads[i], NULL, procurar_numero, &thread_args[i]);
+        
+        if (result != 0) {
+            fprintf(stderr, "Falha ao criar a thread %d.\n", i + 1);
+            exit(1);
+        }
+    }
+
+    // Esperar que todas as threads terminem
+    for (int i = 0; i < NUM_THREADS; i++) {
+        int result = pthread_join(threads[i], &thread_result);
+        
+        if (result != 0) {
+            fprintf(stderr, "Falha ao esperar pela thread %d.\n", i + 1);
+            exit(1);
+        }
+    }
+
+    if (process_number != 0) {
+        printf("O número foi encontrado pela thread %d.\n", process_number);
+    } else {
+        printf("O número não foi encontrado.\n");
+    }
+
+    return 0;
+}
